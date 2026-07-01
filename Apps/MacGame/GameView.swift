@@ -214,6 +214,14 @@ final class GameCoordinator: NSObject, MTKViewDelegate {
             host.grassOptCurve = Int32(s.grassOptCurve)
             host.grassOptOriginMode = Int32(s.grassOptOriginMode)
             host.grassOptOriginMaxOffset = s.grassOptOriginMaxOffset
+            host.grassImitationMode = Int32(s.grassImitationMode)
+            host.grassImitationFadeStart = s.grassImitationFadeStart
+            host.grassImitationFadeEnd = s.grassImitationFadeEnd
+            host.grassImitationOpacity = s.grassImitationOpacity
+            host.grassImitationDensity = s.grassImitationDensity
+            host.grassImitationHeight = s.grassImitationHeight
+            host.grassImitationOriginMode = Int32(s.grassImitationOriginMode)
+            host.grassImitationOriginMaxOffset = s.grassImitationOriginMaxOffset
             host.treesVisible  = s.treesVisible
             host.treeDensity   = s.treeDensity
             host.treeColorR    = s.treeColorR
@@ -405,4 +413,12 @@ final class EngineStats: ObservableObject {
     @Published var grassOptCurve: Int = 0
     @Published var grassOptOriginMode: Int = 0
     @Published var grassOptOriginMaxOffset: Float = 45.0
+    @Published var grassImitationMode: Int = 0
+    @Published var grassImitationFadeStart: Float = 45.0
+    @Published var grassImitationFadeEnd: Float = 78.0
+    @Published var grassImitationOpacity: Float = 0.55
+    @Published var grassImitationDensity: Float = 0.85
+    @Published var grassImitationHeight: Float = 0.08
+    @Published var grassImitationOriginMode: Int = 0
+    @Published var grassImitationOriginMaxOffset: Float = 45.0
 }

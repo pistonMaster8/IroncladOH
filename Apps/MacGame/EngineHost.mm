@@ -172,6 +172,14 @@ struct EngineState {
     int       _grassOptCurve;
     int       _grassOptOriginMode;
     float     _grassOptOriginMaxOffset;
+    int       _grassImitationMode;
+    float     _grassImitationFadeStart;
+    float     _grassImitationFadeEnd;
+    float     _grassImitationOpacity;
+    float     _grassImitationDensity;
+    float     _grassImitationHeight;
+    int       _grassImitationOriginMode;
+    float     _grassImitationOriginMaxOffset;
     float     _terraceNoiseStrength;
     float     _terraceNoiseScale;
     BOOL      _tModeActive;
@@ -230,6 +238,14 @@ struct EngineState {
 @synthesize grassOptCurve            = _grassOptCurve;
 @synthesize grassOptOriginMode       = _grassOptOriginMode;
 @synthesize grassOptOriginMaxOffset  = _grassOptOriginMaxOffset;
+@synthesize grassImitationMode       = _grassImitationMode;
+@synthesize grassImitationFadeStart  = _grassImitationFadeStart;
+@synthesize grassImitationFadeEnd    = _grassImitationFadeEnd;
+@synthesize grassImitationOpacity    = _grassImitationOpacity;
+@synthesize grassImitationDensity    = _grassImitationDensity;
+@synthesize grassImitationHeight     = _grassImitationHeight;
+@synthesize grassImitationOriginMode = _grassImitationOriginMode;
+@synthesize grassImitationOriginMaxOffset = _grassImitationOriginMaxOffset;
 @synthesize terraceNoiseStrength     = _terraceNoiseStrength;
 @synthesize terraceNoiseScale        = _terraceNoiseScale;
 @synthesize tModeActive              = _tModeActive;
@@ -322,6 +338,14 @@ struct EngineState {
     _grassOptCurve         = 0;
     _grassOptOriginMode    = 0;
     _grassOptOriginMaxOffset = 45.0f;
+    _grassImitationMode    = 0;
+    _grassImitationFadeStart = 45.0f;
+    _grassImitationFadeEnd = 78.0f;
+    _grassImitationOpacity = 0.55f;
+    _grassImitationDensity = 0.85f;
+    _grassImitationHeight  = 0.08f;
+    _grassImitationOriginMode = 0;
+    _grassImitationOriginMaxOffset = 45.0f;
     _terraceNoiseStrength = 0.0f;
     _terraceNoiseScale    = 1.0f;
 
@@ -818,37 +842,51 @@ struct EngineState {
     scene.grassOptCurve         = _grassOptCurve;
     scene.grassOptOriginMode    = _grassOptOriginMode;
     scene.grassOptOriginMaxOffset = _grassOptOriginMaxOffset;
-    scene.grassOptOriginX       = scene.cameraPos.x;
-    scene.grassOptOriginZ       = scene.cameraPos.z;
-    if (_grassOptOriginMode == 1) {
-        Vec3 rd = Vec3Norm(Vec3Make(scene.cameraTarget.x - scene.cameraPos.x,
-                                    scene.cameraTarget.y - scene.cameraPos.y,
-                                    scene.cameraTarget.z - scene.cameraPos.z));
-        if (fabsf(rd.y) > 1e-4f) {
-            float t = -scene.cameraPos.y / rd.y;
-            if (t > 0.0f) {
-                scene.grassOptOriginX = scene.cameraPos.x + rd.x * t;
-                scene.grassOptOriginZ = scene.cameraPos.z + rd.z * t;
+    auto resolveGrassOrigin = [&](int mode, float maxOffset, float& outX, float& outZ) {
+        outX = scene.cameraPos.x;
+        outZ = scene.cameraPos.z;
+        if (mode == 1) {
+            Vec3 rd = Vec3Norm(Vec3Make(scene.cameraTarget.x - scene.cameraPos.x,
+                                        scene.cameraTarget.y - scene.cameraPos.y,
+                                        scene.cameraTarget.z - scene.cameraPos.z));
+            if (fabsf(rd.y) > 1e-4f) {
+                float t = -scene.cameraPos.y / rd.y;
+                if (t > 0.0f) {
+                    outX = scene.cameraPos.x + rd.x * t;
+                    outZ = scene.cameraPos.z + rd.z * t;
+                }
+            }
+        } else if (mode == 2) {
+            outX = s.cursorFloorX;
+            outZ = s.cursorFloorZ;
+        } else if (mode == 3) {
+            outX = 0.0f;
+            outZ = 0.0f;
+        }
+        if (mode == 1 || mode == 2) {
+            float dx = outX - scene.cameraPos.x;
+            float dz = outZ - scene.cameraPos.z;
+            float len = sqrtf(dx * dx + dz * dz);
+            float clampedOffset = fmaxf(0.0f, maxOffset);
+            if (len > clampedOffset && len > 1e-4f) {
+                float scale = clampedOffset / len;
+                outX = scene.cameraPos.x + dx * scale;
+                outZ = scene.cameraPos.z + dz * scale;
             }
         }
-    } else if (_grassOptOriginMode == 2) {
-        scene.grassOptOriginX = s.cursorFloorX;
-        scene.grassOptOriginZ = s.cursorFloorZ;
-    } else if (_grassOptOriginMode == 3) {
-        scene.grassOptOriginX = 0.0f;
-        scene.grassOptOriginZ = 0.0f;
-    }
-    if (_grassOptOriginMode == 1 || _grassOptOriginMode == 2) {
-        float dx = scene.grassOptOriginX - scene.cameraPos.x;
-        float dz = scene.grassOptOriginZ - scene.cameraPos.z;
-        float len = sqrtf(dx * dx + dz * dz);
-        float maxOffset = fmaxf(0.0f, _grassOptOriginMaxOffset);
-        if (len > maxOffset && len > 1e-4f) {
-            float scale = maxOffset / len;
-            scene.grassOptOriginX = scene.cameraPos.x + dx * scale;
-            scene.grassOptOriginZ = scene.cameraPos.z + dz * scale;
-        }
-    }
+    };
+    resolveGrassOrigin(_grassOptOriginMode, _grassOptOriginMaxOffset,
+                       scene.grassOptOriginX, scene.grassOptOriginZ);
+    scene.grassImitationMode = _grassImitationMode;
+    scene.grassImitationFadeStart = _grassImitationFadeStart;
+    scene.grassImitationFadeEnd = _grassImitationFadeEnd;
+    scene.grassImitationOpacity = _grassImitationOpacity;
+    scene.grassImitationDensity = _grassImitationDensity;
+    scene.grassImitationHeight = _grassImitationHeight;
+    scene.grassImitationOriginMode = _grassImitationOriginMode;
+    scene.grassImitationOriginMaxOffset = _grassImitationOriginMaxOffset;
+    resolveGrassOrigin(_grassImitationOriginMode, _grassImitationOriginMaxOffset,
+                       scene.grassImitationOriginX, scene.grassImitationOriginZ);
 
     // Terrace face roughness
     scene.terraceNoiseStrength = _terraceNoiseStrength;

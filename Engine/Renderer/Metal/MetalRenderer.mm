@@ -76,7 +76,11 @@ struct ShellCtrlGpu {
     simd_float3 colorBase;
     float       density;
     simd_float3 colorTip;
-    float       _pad;
+    float       opacity;
+    simd_float2 originXZ;
+    float       fadeStart;
+    float       fadeEnd;
+    int         mode;
 };
 
 // ─── Skinned mesh types (GLTF) ────────────────────────────────────────────────
@@ -2086,7 +2090,11 @@ struct ShellCtrl {
     float3 colorBase;
     float  density;
     float3 colorTip;
-    float  _pad;
+    float  opacity;
+    float2 originXZ;
+    float  fadeStart;
+    float  fadeEnd;
+    int    mode;
 };
 
 struct GrassUniforms {
@@ -2426,6 +2434,22 @@ fragment float4 shellFS(VertOut                 in   [[stage_in]],
     if (in.normal.y < 0.98f) discard_fragment();
     constexpr float slopeFade = 1.0f;
 
+    if (ctrl.mode == 1) {
+        float d = distance(wp, ctrl.originXZ);
+        float fadeDenom = max(0.5f, ctrl.fadeEnd - ctrl.fadeStart);
+        float fade = smoothstep(0.0f, 1.0f, (d - ctrl.fadeStart) / fadeDenom);
+        if (fade <= 0.001f) discard_fragment();
+
+        float2 blanketCell = floor(wp * 1.7f);
+        if (shash(blanketCell + float2(71.0f, 19.0f)) >= ctrl.density) discard_fragment();
+
+        float tone = 0.82f + shash(blanketCell + float2(5.0f, 41.0f)) * 0.28f;
+        float3 gCol = mix(ctrl.colorBase, ctrl.colorTip, 0.42f) * tone;
+        float NdotL = saturate(dot(in.normal, -normalize(u.lightDir)));
+        gCol *= u.ambientColor + u.lightColor * (NdotL * 0.35f + 0.45f);
+        return float4(gCol, ctrl.opacity * fade);
+    }
+
     const float gScale = 11.0f;
     float2 shellOff = float2(ghash(float2(shellH * 293.7f, 47.3f)),
                              ghash(float2(shellH * 179.1f, 83.7f))) * (2.5f / gScale);
@@ -2684,6 +2708,13 @@ fragment float4 skyFS(SkyVert in [[stage_in]],
         desc.fragmentFunction                = [d.shaderLibrary newFunctionWithName:@"shellFS"];
         desc.vertexDescriptor                = vd;   // same layout as ground mesh
         desc.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm_sRGB;
+        desc.colorAttachments[0].blendingEnabled = YES;
+        desc.colorAttachments[0].rgbBlendOperation = MTLBlendOperationAdd;
+        desc.colorAttachments[0].alphaBlendOperation = MTLBlendOperationAdd;
+        desc.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorSourceAlpha;
+        desc.colorAttachments[0].destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+        desc.colorAttachments[0].sourceAlphaBlendFactor = MTLBlendFactorOne;
+        desc.colorAttachments[0].destinationAlphaBlendFactor = MTLBlendFactorZero;
         desc.depthAttachmentPixelFormat      = MTLPixelFormatDepth32Float;
         d.psoShell = [d.device newRenderPipelineStateWithDescriptor:desc error:&err];
         if (!d.psoShell)
@@ -3260,7 +3291,11 @@ void MetalRenderer::RenderScene(const ::RenderScene& scene) {
                                             scene.shellGrassColorTip.y,
                                             scene.shellGrassColorTip.z);
             sc.density   = scene.shellGrassDensity * (grassMode == 1 ? 0.55f : grassMode == 7 ? 1.7f : 1.0f);
-            sc._pad      = 0.0f;
+            sc.opacity   = 1.0f;
+            sc.originXZ  = simd_make_float2(scene.cameraPos.x, scene.cameraPos.z);
+            sc.fadeStart = 0.0f;
+            sc.fadeEnd   = 1.0f;
+            sc.mode      = 0;
             memcpy(d.shellCtrlBuf.contents, &sc, sizeof(sc));
 
             int   kShells    = grassMode == 7 ? 18 : grassMode == 1 ? 6 : 12;
@@ -3282,6 +3317,46 @@ void MetalRenderer::RenderScene(const ::RenderScene& scene) {
                      indexBufferOffset:0
                          instanceCount:kShells];
             d.drawCallCount++;
+        }
+
+        if (d.psoShell && scene.grassImitationMode == 1) {
+            ShellCtrlGpu sc;
+            simd_float3 base = simd_make_float3(scene.longGrassColorBase.x,
+                                                scene.longGrassColorBase.y,
+                                                scene.longGrassColorBase.z);
+            simd_float3 tip = simd_make_float3(scene.longGrassColorTip.x,
+                                               scene.longGrassColorTip.y,
+                                               scene.longGrassColorTip.z);
+            sc.colorBase = base;
+            sc.colorTip  = tip;
+            sc.density   = fminf(fmaxf(scene.grassImitationDensity, 0.0f), 1.0f);
+            sc.opacity   = fminf(fmaxf(scene.grassImitationOpacity, 0.0f), 1.0f);
+            sc.originXZ  = simd_make_float2(scene.grassImitationOriginX,
+                                            scene.grassImitationOriginZ);
+            sc.fadeStart = scene.grassImitationFadeStart;
+            sc.fadeEnd   = fmaxf(scene.grassImitationFadeEnd, scene.grassImitationFadeStart + 0.5f);
+            sc.mode      = 1;
+            memcpy(d.shellCtrlBuf.contents, &sc, sizeof(sc));
+
+            int kShells = 3;
+            float shellParams[2] = { float(kShells), fmaxf(scene.grassImitationHeight, 0.01f) };
+            [enc setRenderPipelineState:d.psoShell];
+            [enc setDepthStencilState:d.dssNoWrite];
+            [enc setCullMode:MTLCullModeNone];
+            [enc setVertexBuffer:d.groundVertexBuf offset:0 atIndex:0];
+            [enc setVertexBuffer:d.uniformBuf      offset:0 atIndex:1];
+            [enc setVertexBytes:shellParams length:sizeof(shellParams) atIndex:2];
+            [enc setFragmentBuffer:d.uniformBuf    offset:0 atIndex:1];
+            [enc setFragmentBuffer:d.interactBuf   offset:0 atIndex:4];
+            [enc setFragmentBuffer:d.shellCtrlBuf  offset:0 atIndex:5];
+            [enc drawIndexedPrimitives:MTLPrimitiveTypeTriangle
+                            indexCount:d.groundIndexCount
+                             indexType:d.groundIndexType
+                           indexBuffer:d.groundIndexBuf
+                     indexBufferOffset:0
+                         instanceCount:kShells];
+            d.drawCallCount++;
+            [enc setDepthStencilState:d.dssDefault];
         }
 
         // ── Tall blade pass — Bézier blades ──────────────────────────────────

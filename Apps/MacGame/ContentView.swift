@@ -17,6 +17,17 @@ private struct GrassOptimizationMethod: Identifiable {
     }
 }
 
+private struct GrassImitationMethod: Identifiable {
+    let id: String
+    let name: String
+    let compatibleGenerationIDs: Set<String>
+    let compatibleOptimizationIDs: Set<String>
+
+    func isCompatible(with generation: GrassResearchMethod, optimization: GrassOptimizationMethod) -> Bool {
+        compatibleGenerationIDs.contains(generation.id) && compatibleOptimizationIDs.contains(optimization.id)
+    }
+}
+
 private enum GrassResearchCatalog {
     static let curveTypes = ["Smooth", "Linear", "Ease in", "Ease out", "Hard"]
     static let fadeOriginTypes = ["Beneath camera", "Camera ray", "Cursor ray", "World center"]
@@ -91,6 +102,21 @@ private enum GrassResearchCatalog {
         GrassOptimizationMethod(id: "quality-tiers", name: "Quality tiers", compatibleGenerationIDs: terrainBacked),
         GrassOptimizationMethod(id: "foliage-hlod", name: "Grass impostors / foliage HLOD", compatibleGenerationIDs: allGeometry),
         GrassOptimizationMethod(id: "no-geometry-shader", name: "Avoid geometry/tessellation dependency", compatibleGenerationIDs: terrainBacked)
+    ]
+
+    static let imitationMethods: [GrassImitationMethod] = [
+        GrassImitationMethod(
+            id: "off",
+            name: "Off",
+            compatibleGenerationIDs: Set(generationMethods.map(\.id)),
+            compatibleOptimizationIDs: Set(optimizationMethods.map(\.id))
+        ),
+        GrassImitationMethod(
+            id: "shell-blanket",
+            name: "Semi-solid shell blanket",
+            compatibleGenerationIDs: Set(generationMethods.map(\.id)),
+            compatibleOptimizationIDs: Set(optimizationMethods.map(\.id))
+        )
     ]
 }
 
@@ -219,6 +245,7 @@ private struct WorkspaceSceneView: View {
     @StateObject private var stats = EngineStats()
     @State private var grassGenerationIndex = 0
     @State private var grassOptimizationIndex = 0
+    @State private var grassImitationIndex = 0
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -231,6 +258,7 @@ private struct WorkspaceSceneView: View {
             GrassResearchCyclerPanel(
                 generationIndex: $grassGenerationIndex,
                 optimizationIndex: $grassOptimizationIndex,
+                imitationIndex: $grassImitationIndex,
                 stats: stats
             )
             .padding(10)
@@ -243,6 +271,7 @@ private struct WorkspaceSceneView: View {
 private struct GrassResearchCyclerPanel: View {
     @Binding var generationIndex: Int
     @Binding var optimizationIndex: Int
+    @Binding var imitationIndex: Int
     @ObservedObject var stats: EngineStats
 
     private var generation: GrassResearchMethod {
@@ -251,6 +280,10 @@ private struct GrassResearchCyclerPanel: View {
 
     private var optimization: GrassOptimizationMethod {
         GrassResearchCatalog.optimizationMethods[optimizationIndex]
+    }
+
+    private var imitation: GrassImitationMethod {
+        GrassResearchCatalog.imitationMethods[imitationIndex]
     }
 
     private var compatibleOptimizationCount: Int {
@@ -280,12 +313,21 @@ private struct GrassResearchCyclerPanel: View {
                 next: { cycleOptimization(1) }
             )
 
+            cyclerRow(
+                label: "Distance imitation",
+                value: imitation.name,
+                color: imitation.isCompatible(with: generation, optimization: optimization) ? .orange : .gray,
+                previous: { cycleImitation(-1) },
+                next: { cycleImitation(1) }
+            )
+
             Text("\(compatibleOptimizationCount)/\(GrassResearchCatalog.optimizationMethods.count) compatible")
                 .font(.system(size: 9, design: .monospaced))
                 .foregroundStyle(.gray)
                 .allowsHitTesting(false)
 
             optimizationControls
+            imitationControls
         }
         .padding(7)
         .frame(width: 310, alignment: .leading)
@@ -294,6 +336,7 @@ private struct GrassResearchCyclerPanel: View {
         .onAppear { publishModes() }
         .onChange(of: generationIndex) { publishModes() }
         .onChange(of: optimizationIndex) { publishModes() }
+        .onChange(of: imitationIndex) { publishModes() }
     }
 
     private func cyclerRow(
@@ -323,6 +366,42 @@ private struct GrassResearchCyclerPanel: View {
             }
             .font(.system(size: 10, weight: .semibold, design: .monospaced))
             .foregroundStyle(color)
+        }
+    }
+
+    @ViewBuilder
+    private var imitationControls: some View {
+        if imitation.id != "off" {
+            Divider().background(.orange.opacity(0.35))
+            imitationOriginControl
+            distanceControl("Fade start", value: $stats.grassImitationFadeStart, range: 0...100)
+            distanceControl("Fade end", value: $stats.grassImitationFadeEnd, range: 4...140)
+            scalarControl("Opacity", value: $stats.grassImitationOpacity, range: 0.05...1)
+            scalarControl("Density", value: $stats.grassImitationDensity, range: 0.1...1)
+            scalarControl("Height", value: $stats.grassImitationHeight, range: 0.02...0.3)
+        }
+    }
+
+    private var imitationOriginControl: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Text("Start at")
+                    .frame(width: 84, alignment: .leading)
+                    .foregroundStyle(.orange.opacity(0.75))
+                Button(action: { cycleImitationOrigin(-1) }) { Text("<") }
+                    .buttonStyle(.plain)
+                Text(GrassResearchCatalog.fadeOriginTypes[stats.grassImitationOriginMode])
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .foregroundStyle(.orange)
+                Button(action: { cycleImitationOrigin(1) }) { Text(">") }
+                    .buttonStyle(.plain)
+            }
+            .font(.system(size: 9, weight: .semibold, design: .monospaced))
+            .foregroundStyle(.orange)
+
+            if stats.grassImitationOriginMode == 1 || stats.grassImitationOriginMode == 2 {
+                distanceControl("Max offset", value: $stats.grassImitationOriginMaxOffset, range: 0...100)
+            }
         }
     }
 
@@ -438,6 +517,7 @@ private struct GrassResearchCyclerPanel: View {
                    count: GrassResearchCatalog.generationMethods.count,
                    direction: direction)
         normalizeOptimizationForGeneration()
+        normalizeImitationForContext()
         publishModes()
     }
 
@@ -449,6 +529,7 @@ private struct GrassResearchCyclerPanel: View {
                        direction: direction)
             if optimization.isCompatible(with: generation) {
                 applyDefaultFieldsForOptimization()
+                normalizeImitationForContext()
                 publishModes()
                 return
             }
@@ -466,7 +547,38 @@ private struct GrassResearchCyclerPanel: View {
             if GrassResearchCatalog.optimizationMethods[candidate].isCompatible(with: generation) {
                 optimizationIndex = candidate
                 applyDefaultFieldsForOptimization()
+                normalizeImitationForContext()
                 publishModes()
+                return
+            }
+        }
+    }
+
+    private func cycleImitation(_ direction: Int) {
+        let start = imitationIndex
+        repeat {
+            grassCycle(index: &imitationIndex,
+                       count: GrassResearchCatalog.imitationMethods.count,
+                       direction: direction)
+            if imitation.isCompatible(with: generation, optimization: optimization) {
+                applyDefaultFieldsForImitation()
+                publishModes()
+                return
+            }
+        } while imitationIndex != start
+
+        normalizeImitationForContext()
+        publishModes()
+    }
+
+    private func normalizeImitationForContext() {
+        guard !imitation.isCompatible(with: generation, optimization: optimization) else { return }
+        let count = GrassResearchCatalog.imitationMethods.count
+        for step in 1...count {
+            let candidate = (imitationIndex - step + count) % count
+            if GrassResearchCatalog.imitationMethods[candidate].isCompatible(with: generation, optimization: optimization) {
+                imitationIndex = candidate
+                applyDefaultFieldsForImitation()
                 return
             }
         }
@@ -479,6 +591,11 @@ private struct GrassResearchCyclerPanel: View {
     private func publishModes() {
         stats.grassGenerationMode = generationIndex
         stats.grassOptimizationMode = optimizationIndex
+        stats.grassImitationMode = imitationIndex
+    }
+
+    private func cycleImitationOrigin(_ direction: Int) {
+        stats.grassImitationOriginMode = (stats.grassImitationOriginMode + direction + GrassResearchCatalog.fadeOriginTypes.count) % GrassResearchCatalog.fadeOriginTypes.count
     }
 
     private func applyDefaultFieldsForOptimization() {
@@ -519,6 +636,21 @@ private struct GrassResearchCyclerPanel: View {
             stats.grassOptDensityScale = 0.55
         case "quality-tiers":
             stats.grassOptDensityScale = 0.72
+        default:
+            break
+        }
+    }
+
+    private func applyDefaultFieldsForImitation() {
+        switch imitation.id {
+        case "shell-blanket":
+            stats.grassImitationFadeStart = 45
+            stats.grassImitationFadeEnd = 78
+            stats.grassImitationOpacity = 0.55
+            stats.grassImitationDensity = 0.85
+            stats.grassImitationHeight = 0.08
+            stats.grassImitationOriginMode = 0
+            stats.grassImitationOriginMaxOffset = 45
         default:
             break
         }

@@ -178,6 +178,16 @@ struct RenderScene {
     float grassOptOriginMaxOffset { 45.0f };
     float grassOptOriginX       { 0.0f };
     float grassOptOriginZ       { 0.0f };
+    int   grassImitationMode    { 0 };
+    float grassImitationFadeStart { 45.0f };
+    float grassImitationFadeEnd { 78.0f };
+    float grassImitationOpacity { 0.55f };
+    float grassImitationDensity { 0.85f };
+    float grassImitationHeight  { 0.08f };
+    int   grassImitationOriginMode { 0 };
+    float grassImitationOriginMaxOffset { 45.0f };
+    float grassImitationOriginX { 0.0f };
+    float grassImitationOriginZ { 0.0f };
 
     // Terrain construction editor
     bool  dModeActive          = false;

@@ -89,6 +89,14 @@ NS_ASSUME_NONNULL_BEGIN
 @property (readwrite) int grassOptCurve;
 @property (readwrite) int grassOptOriginMode;
 @property (readwrite) float grassOptOriginMaxOffset;
+@property (readwrite) int grassImitationMode;
+@property (readwrite) float grassImitationFadeStart;
+@property (readwrite) float grassImitationFadeEnd;
+@property (readwrite) float grassImitationOpacity;
+@property (readwrite) float grassImitationDensity;
+@property (readwrite) float grassImitationHeight;
+@property (readwrite) int grassImitationOriginMode;
+@property (readwrite) float grassImitationOriginMaxOffset;
 
 /// A-mode (animation editor panel) — toggled by A key; readonly from Swift.
 @property (readonly)  BOOL  aModeActive;
