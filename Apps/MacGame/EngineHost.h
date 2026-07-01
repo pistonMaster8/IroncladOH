@@ -80,6 +80,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (readwrite) float longColorTipR;
 @property (readwrite) float longColorTipG;
 @property (readwrite) float longColorTipB;
+@property (readwrite) int grassGenerationMode;
+@property (readwrite) int grassOptimizationMode;
 
 /// A-mode (animation editor panel) — toggled by A key; readonly from Swift.
 @property (readonly)  BOOL  aModeActive;

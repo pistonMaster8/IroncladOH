@@ -167,6 +167,8 @@ struct RenderScene {
     float longStepEdgeDensity   { 1.0f };
     Vec3  longGrassColorBase    { Vec3Make(0.055f, 0.075f, 0.022f) };
     Vec3  longGrassColorTip     { Vec3Make(0.200f, 0.260f, 0.070f) };
+    int   grassGenerationMode   { 0 };
+    int   grassOptimizationMode { 0 };
 
     // Terrain construction editor
     bool  dModeActive          = false;

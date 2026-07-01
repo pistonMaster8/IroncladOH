@@ -163,6 +163,8 @@ struct EngineState {
     float     _longStepEdgeDensity;
     float     _longColorBaseR,  _longColorBaseG,  _longColorBaseB;
     float     _longColorTipR,   _longColorTipG,   _longColorTipB;
+    int       _grassGenerationMode;
+    int       _grassOptimizationMode;
     float     _terraceNoiseStrength;
     float     _terraceNoiseScale;
     BOOL      _tModeActive;
@@ -212,6 +214,8 @@ struct EngineState {
 @synthesize longColorTipR            = _longColorTipR;
 @synthesize longColorTipG            = _longColorTipG;
 @synthesize longColorTipB            = _longColorTipB;
+@synthesize grassGenerationMode      = _grassGenerationMode;
+@synthesize grassOptimizationMode    = _grassOptimizationMode;
 @synthesize terraceNoiseStrength     = _terraceNoiseStrength;
 @synthesize terraceNoiseScale        = _terraceNoiseScale;
 @synthesize tModeActive              = _tModeActive;
@@ -295,6 +299,8 @@ struct EngineState {
     _longStepEdgeDensity    = 1.0f;
     _longColorBaseR     = 0.055f; _longColorBaseG  = 0.075f; _longColorBaseB  = 0.022f;
     _longColorTipR      = 0.200f; _longColorTipG   = 0.260f; _longColorTipB   = 0.070f;
+    _grassGenerationMode   = 0;
+    _grassOptimizationMode = 0;
     _terraceNoiseStrength = 0.0f;
     _terraceNoiseScale    = 1.0f;
 
@@ -782,6 +788,8 @@ struct EngineState {
     scene.longStepEdgeDensity   = _longStepEdgeDensity;
     scene.longGrassColorBase  = Vec3Make(_longColorBaseR,  _longColorBaseG,  _longColorBaseB);
     scene.longGrassColorTip   = Vec3Make(_longColorTipR,   _longColorTipG,   _longColorTipB);
+    scene.grassGenerationMode   = _grassGenerationMode;
+    scene.grassOptimizationMode = _grassOptimizationMode;
 
     // Terrace face roughness
     scene.terraceNoiseStrength = _terraceNoiseStrength;

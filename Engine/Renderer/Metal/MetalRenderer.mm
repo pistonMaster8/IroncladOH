@@ -1155,6 +1155,8 @@ struct GpuGrassUniforms {
     int          sideVerts;    // fin verts per blade (same shape, rotated 90°)
     float        worldScale;   // ground-plane enlargement (procedural preset); 1 = normal
     int          hfDivs;       // active heightfield grid divisions (scales with the plane)
+    int          mode;
+    int          optMode;
     simd_float3  colorBase;  float _pad2;
     simd_float3  colorTip;   float _pad3;
 };
@@ -2090,6 +2092,8 @@ struct GrassUniforms {
     int    sideVerts;
     float  worldScale;   // ground-plane enlargement (procedural preset); 1 = normal
     int    hfDivs;       // active heightfield grid divisions (scales with the plane)
+    int    mode;
+    int    optMode;
     float3 colorBase; float _pad2;
     float3 colorTip;  float _pad3;
 };
@@ -2148,6 +2152,10 @@ vertex GrassOut grassVS(uint             vid [[vertex_id]],
 
     // Per-blade stable random — keyed off blade index (a fixed world cell), stable across frames.
     float br = ghash(float2(float(bladeIdx) * 7.31f, float(bladeIdx) * 3.73f));
+    int mode = g.mode;
+    int optMode = g.optMode;
+    float distCam = distance(float2(u.cameraPos.x, u.cameraPos.z), float2(wx, wz));
+    float chunkHash = shash(floor(float2(wx, wz) / 12.0f));
 
     // Culling. Risers stay ~1 grid cell wide at any plane scale (constant cell size), so the
     // slope test below catches them without a separate per-blade riser probe.
@@ -2194,7 +2202,22 @@ vertex GrassOut grassVS(uint             vid [[vertex_id]],
     // toward 0, making the cull threshold barely fire for density < 0.5.
     if (!cull) {
         float densR = shash(float2(float(bladeIdx), 73.0f));
-        if (densR >= grassDensityParams.x) cull = true;
+        float modeDensity = grassDensityParams.x;
+        if (mode == 2) modeDensity *= 0.34f;                  // CPU instanced clumps/cards
+        else if (mode == 3) modeDensity *= (chunkHash > 0.34f ? 0.85f : 0.04f); // chunks
+        else if (mode == 4) modeDensity *= 0.52f;             // alpha cards
+        else if (mode == 5) modeDensity *= mix(0.95f, 0.22f, smoothstep(20.0f, 70.0f, distCam));
+        else if (mode == 6) modeDensity *= 0.78f;             // wind demo
+        else if (mode == 8) modeDensity *= 1.35f;             // GPU generated dense
+        else if (mode == 9) modeDensity *= mix(1.0f, 0.18f, smoothstep(18.0f, 62.0f, distCam));
+        else if (mode == 10) modeDensity *= 0.20f;            // billboard-only
+
+        if (optMode == 0) modeDensity *= 1.0f - smoothstep(46.0f, 58.0f, distCam);
+        else if (optMode == 2) modeDensity *= mix(1.0f, 0.25f, smoothstep(18.0f, 70.0f, distCam));
+        else if (optMode == 13) modeDensity *= 0.55f;
+        else if (optMode == 22) modeDensity *= 0.72f;
+
+        if (densR >= clamp(modeDensity, 0.0f, 1.0f)) cull = true;
     }
 
     if (cull) {
@@ -2217,6 +2240,15 @@ vertex GrassOut grassVS(uint             vid [[vertex_id]],
     float bH = g.bladeHeight * hScale;
     float bB = g.bladeBend   * hScale;
     float bW = g.bladeWidth  * (0.6f + br * 0.8f);
+    if (mode == 2) { bH *= 0.62f; bB *= 0.35f; bW *= 2.4f; }       // clump/card patch
+    else if (mode == 3) { bH *= 0.82f; bB *= 0.55f; bW *= 1.8f; }  // chunked patches
+    else if (mode == 4) { bH *= 0.72f; bB *= 0.22f; bW *= 3.8f; }  // alpha-cutout cards
+    else if (mode == 5) { float lod = smoothstep(18.0f, 70.0f, distCam); bH *= mix(1.0f, 0.45f, lod); bW *= mix(1.0f, 2.1f, lod); }
+    else if (mode == 6) { bH *= 1.05f; bB *= 1.85f; }
+    else if (mode == 8) { bH *= 0.88f; bB *= 0.75f; bW *= 0.75f; }
+    else if (mode == 9) { float lod = smoothstep(14.0f, 62.0f, distCam); bH *= mix(1.0f, 0.38f, lod); bW *= mix(0.9f, 2.8f, lod); }
+    else if (mode == 10) { bH *= 0.92f; bB *= 0.05f; bW *= 5.2f; }
+    if (optMode == 16) bW *= mix(1.0f, 2.0f, smoothstep(20.0f, 64.0f, distCam));
 
     // ── Grass interaction: footprint squish + lateral push ────────────────────
     float4 interact = grInteract(wx, wz, gf);
@@ -2224,6 +2256,10 @@ vertex GrassOut grassVS(uint             vid [[vertex_id]],
     float  squish = interact.z;    // 0 = upright, 1 = fully flat
     bH *= (1.0f - squish * 0.88f);
     bB *= (1.0f - squish * 0.88f);
+    float windStrength = (mode == 6) ? 0.55f : 0.12f;
+    if (optMode == 8) windStrength *= 1.0f - smoothstep(22.0f, 55.0f, distCam);
+    float wind = sin(u.time * (mode == 6 ? 2.2f : 0.7f) + wx * 0.12f + wz * 0.07f + br * 6.28f);
+    bB += wind * windStrength * bH;
 
     // Fin: same shape rotated 90°, narrower — catches viewpoints along the main blade's face
     float2 gfwd  = isFin ? perp        : fwd;
@@ -2286,6 +2322,15 @@ vertex GrassOut grassVS(uint             vid [[vertex_id]],
     // Long blades: dramatic tip lightening concentrated near tip end
     float tMix = (bv == 15) ? pow(tParam, 0.4f) : tParam;
     float3 col = mix(g.colorBase, g.colorTip, tMix);
+    if (mode == 1) col = mix(float3(0.025f, 0.075f, 0.025f), float3(0.10f, 0.18f, 0.065f), br);
+    else if (mode == 2) col = mix(float3(0.035f, 0.095f, 0.030f), float3(0.18f, 0.26f, 0.08f), tMix);
+    else if (mode == 3) col = mix(float3(0.020f, 0.070f, 0.025f), float3(0.11f, 0.20f, 0.06f), tMix) * (chunkHash > 0.34f ? 1.0f : 0.45f);
+    else if (mode == 4) col = mix(float3(0.050f, 0.105f, 0.040f), float3(0.24f, 0.32f, 0.10f), tMix);
+    else if (mode == 5) col *= mix(1.06f, 0.62f, smoothstep(24.0f, 76.0f, distCam));
+    else if (mode == 6) col = mix(float3(0.025f, 0.085f, 0.035f), float3(0.16f, 0.26f, 0.08f), tMix);
+    else if (mode == 8) col = mix(float3(0.018f, 0.075f, 0.028f), float3(0.13f, 0.24f, 0.07f), tMix);
+    else if (mode == 9) col = mix(float3(0.028f, 0.085f, 0.030f), float3(0.20f, 0.30f, 0.09f), tMix);
+    else if (mode == 10) col = mix(float3(0.025f, 0.070f, 0.026f), float3(0.16f, 0.22f, 0.07f), tMix);
     col += (br - 0.5f) * 0.012f;
 
     // Tips lighten toward dead/dry straw the closer the blade is to a downward step;
@@ -3161,10 +3206,15 @@ void MetalRenderer::RenderScene(const ::RenderScene& scene) {
             gp[gi2].hfDivs     = Terrain::gHFDivs;
             gp[gi2].halfExt    = kBaseHalfExt;
             gp[gi2].spacing    = kBaseSpacing[gi2];
+            gp[gi2].mode       = scene.grassGenerationMode;
+            gp[gi2].optMode    = scene.grassOptimizationMode;
         }
+        const int grassMode = scene.grassGenerationMode;
 
         // ── Small blade pass — shell grass (terrain mesh redrawn N times) ────
-        if (d.psoShell && scene.shellGrassVisible) {
+        bool drawShellGrass = scene.shellGrassVisible && (grassMode == 0 || grassMode == 7);
+        bool drawLongGrass  = scene.longGrassVisible  && grassMode != 1 && grassMode != 7;
+        if (d.psoShell && drawShellGrass) {
             // Upload shell ctrl (colors + density)
             ShellCtrlGpu sc;
             sc.colorBase = simd_make_float3(scene.shellGrassColorBase.x,
@@ -3173,12 +3223,12 @@ void MetalRenderer::RenderScene(const ::RenderScene& scene) {
             sc.colorTip  = simd_make_float3(scene.shellGrassColorTip.x,
                                             scene.shellGrassColorTip.y,
                                             scene.shellGrassColorTip.z);
-            sc.density   = scene.shellGrassDensity;
+            sc.density   = scene.shellGrassDensity * (grassMode == 1 ? 0.55f : grassMode == 7 ? 1.7f : 1.0f);
             sc._pad      = 0.0f;
             memcpy(d.shellCtrlBuf.contents, &sc, sizeof(sc));
 
-            constexpr int   kShells    = 12;
-            constexpr float kMaxShellH = 0.14f;
+            int   kShells    = grassMode == 7 ? 18 : grassMode == 1 ? 6 : 12;
+            float kMaxShellH = grassMode == 7 ? 0.22f : grassMode == 1 ? 0.06f : 0.14f;
             float shellParams[2] = { float(kShells), kMaxShellH };
             [enc setRenderPipelineState:d.psoShell];
             [enc setDepthStencilState:d.dssDefault];
@@ -3199,7 +3249,7 @@ void MetalRenderer::RenderScene(const ::RenderScene& scene) {
         }
 
         // ── Tall blade pass — Bézier blades ──────────────────────────────────
-        if (d.psoGrass && scene.longGrassVisible) {
+        if (d.psoGrass && drawLongGrass) {
             // Apply G-panel color overrides to gp[1]
             gp[1].colorBase = simd_make_float3(scene.longGrassColorBase.x,
                                                scene.longGrassColorBase.y,
@@ -3207,7 +3257,16 @@ void MetalRenderer::RenderScene(const ::RenderScene& scene) {
             gp[1].colorTip  = simd_make_float3(scene.longGrassColorTip.x,
                                                scene.longGrassColorTip.y,
                                                scene.longGrassColorTip.z);
-            float longDensParams[2] = { scene.longGrassDensity, scene.longStepEdgeDensity };
+            float modeDensityScale = 1.0f;
+            if (grassMode == 2) modeDensityScale = 0.55f;
+            else if (grassMode == 3) modeDensityScale = 1.0f;
+            else if (grassMode == 4) modeDensityScale = 0.75f;
+            else if (grassMode == 5) modeDensityScale = 0.95f;
+            else if (grassMode == 6) modeDensityScale = 0.85f;
+            else if (grassMode == 8) modeDensityScale = 1.0f;
+            else if (grassMode == 9) modeDensityScale = 0.85f;
+            else if (grassMode == 10) modeDensityScale = 0.38f;
+            float longDensParams[2] = { scene.longGrassDensity * modeDensityScale, scene.longStepEdgeDensity };
             memcpy(d.longDensityBuf.contents, longDensParams, sizeof(longDensParams));
 
             GpuGrassUniforms& pg = gp[1];

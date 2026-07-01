@@ -227,7 +227,8 @@ private struct WorkspaceSceneView: View {
 
             GrassResearchCyclerPanel(
                 generationIndex: $grassGenerationIndex,
-                optimizationIndex: $grassOptimizationIndex
+                optimizationIndex: $grassOptimizationIndex,
+                stats: stats
             )
             .padding(10)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
@@ -239,6 +240,7 @@ private struct WorkspaceSceneView: View {
 private struct GrassResearchCyclerPanel: View {
     @Binding var generationIndex: Int
     @Binding var optimizationIndex: Int
+    @ObservedObject var stats: EngineStats
 
     private var generation: GrassResearchMethod {
         GrassResearchCatalog.generationMethods[generationIndex]
@@ -284,6 +286,9 @@ private struct GrassResearchCyclerPanel: View {
         .frame(width: 310, alignment: .leading)
         .background(.black.opacity(0.62))
         .cornerRadius(5)
+        .onAppear { publishModes() }
+        .onChange(of: generationIndex) { publishModes() }
+        .onChange(of: optimizationIndex) { publishModes() }
     }
 
     private func cyclerRow(
@@ -321,6 +326,7 @@ private struct GrassResearchCyclerPanel: View {
                    count: GrassResearchCatalog.generationMethods.count,
                    direction: direction)
         normalizeOptimizationForGeneration()
+        publishModes()
     }
 
     private func cycleOptimization(_ direction: Int) {
@@ -333,6 +339,7 @@ private struct GrassResearchCyclerPanel: View {
         } while optimizationIndex != start
 
         normalizeOptimizationForGeneration()
+        publishModes()
     }
 
     private func normalizeOptimizationForGeneration() {
@@ -342,6 +349,7 @@ private struct GrassResearchCyclerPanel: View {
             let candidate = (optimizationIndex - step + count) % count
             if GrassResearchCatalog.optimizationMethods[candidate].isCompatible(with: generation) {
                 optimizationIndex = candidate
+                publishModes()
                 return
             }
         }
@@ -349,6 +357,11 @@ private struct GrassResearchCyclerPanel: View {
 
     private func grassCycle(index: inout Int, count: Int, direction: Int) {
         index = (index + direction + count) % count
+    }
+
+    private func publishModes() {
+        stats.grassGenerationMode = generationIndex
+        stats.grassOptimizationMode = optimizationIndex
     }
 }
 
