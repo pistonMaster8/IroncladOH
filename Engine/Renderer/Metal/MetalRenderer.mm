@@ -1158,10 +1158,12 @@ struct GpuGrassUniforms {
     int          mode;
     int          optMode;
     simd_float4  optParams;    // x=start distance, y=end distance, z=density/wind scale, w=strength
+    simd_float2  optOriginXZ;
+    float        optOriginMaxOffset;
+    int          optOriginMode;
     int          optCurve;
     int          _padOpt0;
     int          _padOpt1;
-    int          _padOpt2;
     simd_float3  colorBase;  float _pad2;
     simd_float3  colorTip;   float _pad3;
 };
@@ -2100,10 +2102,12 @@ struct GrassUniforms {
     int    mode;
     int    optMode;
     float4 optParams;    // x=start distance, y=end distance, z=density/wind scale, w=strength
+    float2 optOriginXZ;
+    float  optOriginMaxOffset;
+    int    optOriginMode;
     int    optCurve;
     int    _padOpt0;
     int    _padOpt1;
-    int    _padOpt2;
     float3 colorBase; float _pad2;
     float3 colorTip;  float _pad3;
 };
@@ -2174,10 +2178,11 @@ vertex GrassOut grassVS(uint             vid [[vertex_id]],
     int mode = g.mode;
     int optMode = g.optMode;
     float distCam = distance(float2(u.cameraPos.x, u.cameraPos.z), float2(wx, wz));
+    float distOptOrigin = distance(g.optOriginXZ, float2(wx, wz));
     float chunkHash = shash(floor(float2(wx, wz) / 12.0f));
     float optStart = min(g.optParams.x, g.optParams.y - 0.5f);
     float optEnd = max(g.optParams.y, optStart + 0.5f);
-    float optT = grassCurve((distCam - optStart) / (optEnd - optStart), g.optCurve);
+    float optT = grassCurve((distOptOrigin - optStart) / (optEnd - optStart), g.optCurve);
 
     // Culling. Risers stay ~1 grid cell wide at any plane scale (constant cell size), so the
     // slope test below catches them without a separate per-blade riser probe.
@@ -3234,6 +3239,10 @@ void MetalRenderer::RenderScene(const ::RenderScene& scene) {
                                                    scene.grassOptEndDistance,
                                                    scene.grassOptDensityScale,
                                                    scene.grassOptStrength);
+            gp[gi2].optOriginXZ = simd_make_float2(scene.grassOptOriginX,
+                                                    scene.grassOptOriginZ);
+            gp[gi2].optOriginMaxOffset = scene.grassOptOriginMaxOffset;
+            gp[gi2].optOriginMode = scene.grassOptOriginMode;
             gp[gi2].optCurve   = scene.grassOptCurve;
         }
         const int grassMode = scene.grassGenerationMode;

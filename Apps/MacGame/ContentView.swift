@@ -19,6 +19,7 @@ private struct GrassOptimizationMethod: Identifiable {
 
 private enum GrassResearchCatalog {
     static let curveTypes = ["Smooth", "Linear", "Ease in", "Ease out", "Hard"]
+    static let fadeOriginTypes = ["Beneath camera", "Camera ray", "Cursor ray", "World center"]
 
     static let generationMethods: [GrassResearchMethod] = [
         GrassResearchMethod(id: "ironclad-default", name: "Ironclad Default"),
@@ -330,21 +331,25 @@ private struct GrassResearchCyclerPanel: View {
         Divider().background(.cyan.opacity(0.35))
         switch optimization.id {
         case "no-far-geometry":
+            fadeOriginControl
             distanceControl("Cull start", value: $stats.grassOptStartDistance, range: 12...90)
             distanceControl("Cull end", value: $stats.grassOptEndDistance, range: 16...120)
             scalarControl("Far density", value: $stats.grassOptDensityScale, range: 0...0.35)
             curveControl
         case "distance-lod-density", "dither-density-fade":
+            fadeOriginControl
             distanceControl("LOD start", value: $stats.grassOptStartDistance, range: 8...80)
             distanceControl("LOD end", value: $stats.grassOptEndDistance, range: 16...130)
             scalarControl("Far density", value: $stats.grassOptDensityScale, range: 0.05...0.75)
             curveControl
         case "wind-lod":
+            fadeOriginControl
             distanceControl("Wind fade start", value: $stats.grassOptStartDistance, range: 8...80)
             distanceControl("Wind fade end", value: $stats.grassOptEndDistance, range: 16...130)
             scalarControl("Far wind", value: $stats.grassOptDensityScale, range: 0...0.8)
             curveControl
         case "lod-width-compensation":
+            fadeOriginControl
             distanceControl("Widen start", value: $stats.grassOptStartDistance, range: 8...80)
             distanceControl("Widen end", value: $stats.grassOptEndDistance, range: 16...130)
             scalarControl("Width scale", value: $stats.grassOptStrength, range: 1...4)
@@ -356,6 +361,29 @@ private struct GrassResearchCyclerPanel: View {
                 .font(.system(size: 9, design: .monospaced))
                 .foregroundStyle(.gray)
                 .allowsHitTesting(false)
+        }
+    }
+
+    private var fadeOriginControl: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Text("Start at")
+                    .frame(width: 84, alignment: .leading)
+                    .foregroundStyle(.cyan.opacity(0.75))
+                Button(action: { cycleFadeOrigin(-1) }) { Text("<") }
+                    .buttonStyle(.plain)
+                Text(GrassResearchCatalog.fadeOriginTypes[stats.grassOptOriginMode])
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .foregroundStyle(.cyan)
+                Button(action: { cycleFadeOrigin(1) }) { Text(">") }
+                    .buttonStyle(.plain)
+            }
+            .font(.system(size: 9, weight: .semibold, design: .monospaced))
+            .foregroundStyle(.cyan)
+
+            if stats.grassOptOriginMode == 1 || stats.grassOptOriginMode == 2 {
+                distanceControl("Max offset", value: $stats.grassOptOriginMaxOffset, range: 0...100)
+            }
         }
     }
 
@@ -399,6 +427,10 @@ private struct GrassResearchCyclerPanel: View {
 
     private func cycleCurve(_ direction: Int) {
         stats.grassOptCurve = (stats.grassOptCurve + direction + GrassResearchCatalog.curveTypes.count) % GrassResearchCatalog.curveTypes.count
+    }
+
+    private func cycleFadeOrigin(_ direction: Int) {
+        stats.grassOptOriginMode = (stats.grassOptOriginMode + direction + GrassResearchCatalog.fadeOriginTypes.count) % GrassResearchCatalog.fadeOriginTypes.count
     }
 
     private func cycleGeneration(_ direction: Int) {
@@ -457,24 +489,32 @@ private struct GrassResearchCyclerPanel: View {
             stats.grassOptDensityScale = 0
             stats.grassOptStrength = 2
             stats.grassOptCurve = 0
+            stats.grassOptOriginMode = 0
+            stats.grassOptOriginMaxOffset = 45
         case "distance-lod-density", "dither-density-fade":
             stats.grassOptStartDistance = 18
             stats.grassOptEndDistance = 70
             stats.grassOptDensityScale = 0.25
             stats.grassOptStrength = 2
             stats.grassOptCurve = 0
+            stats.grassOptOriginMode = 0
+            stats.grassOptOriginMaxOffset = 45
         case "wind-lod":
             stats.grassOptStartDistance = 22
             stats.grassOptEndDistance = 55
             stats.grassOptDensityScale = 0
             stats.grassOptStrength = 2
             stats.grassOptCurve = 0
+            stats.grassOptOriginMode = 0
+            stats.grassOptOriginMaxOffset = 45
         case "lod-width-compensation":
             stats.grassOptStartDistance = 20
             stats.grassOptEndDistance = 64
             stats.grassOptDensityScale = 0.25
             stats.grassOptStrength = 2
             stats.grassOptCurve = 0
+            stats.grassOptOriginMode = 0
+            stats.grassOptOriginMaxOffset = 45
         case "overdraw-control":
             stats.grassOptDensityScale = 0.55
         case "quality-tiers":

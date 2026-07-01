@@ -170,6 +170,8 @@ struct EngineState {
     float     _grassOptDensityScale;
     float     _grassOptStrength;
     int       _grassOptCurve;
+    int       _grassOptOriginMode;
+    float     _grassOptOriginMaxOffset;
     float     _terraceNoiseStrength;
     float     _terraceNoiseScale;
     BOOL      _tModeActive;
@@ -226,6 +228,8 @@ struct EngineState {
 @synthesize grassOptDensityScale     = _grassOptDensityScale;
 @synthesize grassOptStrength         = _grassOptStrength;
 @synthesize grassOptCurve            = _grassOptCurve;
+@synthesize grassOptOriginMode       = _grassOptOriginMode;
+@synthesize grassOptOriginMaxOffset  = _grassOptOriginMaxOffset;
 @synthesize terraceNoiseStrength     = _terraceNoiseStrength;
 @synthesize terraceNoiseScale        = _terraceNoiseScale;
 @synthesize tModeActive              = _tModeActive;
@@ -316,6 +320,8 @@ struct EngineState {
     _grassOptDensityScale  = 0.0f;
     _grassOptStrength      = 2.0f;
     _grassOptCurve         = 0;
+    _grassOptOriginMode    = 0;
+    _grassOptOriginMaxOffset = 45.0f;
     _terraceNoiseStrength = 0.0f;
     _terraceNoiseScale    = 1.0f;
 
@@ -810,6 +816,39 @@ struct EngineState {
     scene.grassOptDensityScale  = _grassOptDensityScale;
     scene.grassOptStrength      = _grassOptStrength;
     scene.grassOptCurve         = _grassOptCurve;
+    scene.grassOptOriginMode    = _grassOptOriginMode;
+    scene.grassOptOriginMaxOffset = _grassOptOriginMaxOffset;
+    scene.grassOptOriginX       = scene.cameraPos.x;
+    scene.grassOptOriginZ       = scene.cameraPos.z;
+    if (_grassOptOriginMode == 1) {
+        Vec3 rd = Vec3Norm(Vec3Make(scene.cameraTarget.x - scene.cameraPos.x,
+                                    scene.cameraTarget.y - scene.cameraPos.y,
+                                    scene.cameraTarget.z - scene.cameraPos.z));
+        if (fabsf(rd.y) > 1e-4f) {
+            float t = -scene.cameraPos.y / rd.y;
+            if (t > 0.0f) {
+                scene.grassOptOriginX = scene.cameraPos.x + rd.x * t;
+                scene.grassOptOriginZ = scene.cameraPos.z + rd.z * t;
+            }
+        }
+    } else if (_grassOptOriginMode == 2) {
+        scene.grassOptOriginX = s.cursorFloorX;
+        scene.grassOptOriginZ = s.cursorFloorZ;
+    } else if (_grassOptOriginMode == 3) {
+        scene.grassOptOriginX = 0.0f;
+        scene.grassOptOriginZ = 0.0f;
+    }
+    if (_grassOptOriginMode == 1 || _grassOptOriginMode == 2) {
+        float dx = scene.grassOptOriginX - scene.cameraPos.x;
+        float dz = scene.grassOptOriginZ - scene.cameraPos.z;
+        float len = sqrtf(dx * dx + dz * dz);
+        float maxOffset = fmaxf(0.0f, _grassOptOriginMaxOffset);
+        if (len > maxOffset && len > 1e-4f) {
+            float scale = maxOffset / len;
+            scene.grassOptOriginX = scene.cameraPos.x + dx * scale;
+            scene.grassOptOriginZ = scene.cameraPos.z + dz * scale;
+        }
+    }
 
     // Terrace face roughness
     scene.terraceNoiseStrength = _terraceNoiseStrength;

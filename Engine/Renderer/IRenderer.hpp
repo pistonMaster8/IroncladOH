@@ -174,6 +174,10 @@ struct RenderScene {
     float grassOptDensityScale  { 0.0f };
     float grassOptStrength      { 2.0f };
     int   grassOptCurve         { 0 };
+    int   grassOptOriginMode    { 0 };
+    float grassOptOriginMaxOffset { 45.0f };
+    float grassOptOriginX       { 0.0f };
+    float grassOptOriginZ       { 0.0f };
 
     // Terrain construction editor
     bool  dModeActive          = false;
