@@ -18,6 +18,8 @@ private struct GrassOptimizationMethod: Identifiable {
 }
 
 private enum GrassResearchCatalog {
+    static let curveTypes = ["Smooth", "Linear", "Ease in", "Ease out", "Hard"]
+
     static let generationMethods: [GrassResearchMethod] = [
         GrassResearchMethod(id: "ironclad-default", name: "Ironclad Default"),
         GrassResearchMethod(id: "terrain-material", name: "Terrain-material foundation"),
@@ -281,6 +283,8 @@ private struct GrassResearchCyclerPanel: View {
                 .font(.system(size: 9, design: .monospaced))
                 .foregroundStyle(.gray)
                 .allowsHitTesting(false)
+
+            optimizationControls
         }
         .padding(7)
         .frame(width: 310, alignment: .leading)
@@ -321,6 +325,82 @@ private struct GrassResearchCyclerPanel: View {
         }
     }
 
+    @ViewBuilder
+    private var optimizationControls: some View {
+        Divider().background(.cyan.opacity(0.35))
+        switch optimization.id {
+        case "no-far-geometry":
+            distanceControl("Cull start", value: $stats.grassOptStartDistance, range: 12...90)
+            distanceControl("Cull end", value: $stats.grassOptEndDistance, range: 16...120)
+            scalarControl("Far density", value: $stats.grassOptDensityScale, range: 0...0.35)
+            curveControl
+        case "distance-lod-density", "dither-density-fade":
+            distanceControl("LOD start", value: $stats.grassOptStartDistance, range: 8...80)
+            distanceControl("LOD end", value: $stats.grassOptEndDistance, range: 16...130)
+            scalarControl("Far density", value: $stats.grassOptDensityScale, range: 0.05...0.75)
+            curveControl
+        case "wind-lod":
+            distanceControl("Wind fade start", value: $stats.grassOptStartDistance, range: 8...80)
+            distanceControl("Wind fade end", value: $stats.grassOptEndDistance, range: 16...130)
+            scalarControl("Far wind", value: $stats.grassOptDensityScale, range: 0...0.8)
+            curveControl
+        case "lod-width-compensation":
+            distanceControl("Widen start", value: $stats.grassOptStartDistance, range: 8...80)
+            distanceControl("Widen end", value: $stats.grassOptEndDistance, range: 16...130)
+            scalarControl("Width scale", value: $stats.grassOptStrength, range: 1...4)
+            curveControl
+        case "overdraw-control", "quality-tiers":
+            scalarControl("Density scale", value: $stats.grassOptDensityScale, range: 0.2...1)
+        default:
+            Text("No live fields for this optimization yet")
+                .font(.system(size: 9, design: .monospaced))
+                .foregroundStyle(.gray)
+                .allowsHitTesting(false)
+        }
+    }
+
+    private var curveControl: some View {
+        HStack(spacing: 6) {
+            Text("Curve")
+                .frame(width: 84, alignment: .leading)
+                .foregroundStyle(.cyan.opacity(0.75))
+            Button(action: { cycleCurve(-1) }) { Text("<") }
+                .buttonStyle(.plain)
+            Text(GrassResearchCatalog.curveTypes[stats.grassOptCurve])
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .foregroundStyle(.cyan)
+            Button(action: { cycleCurve(1) }) { Text(">") }
+                .buttonStyle(.plain)
+        }
+        .font(.system(size: 9, weight: .semibold, design: .monospaced))
+        .foregroundStyle(.cyan)
+    }
+
+    private func distanceControl(_ label: String, value: Binding<Float>, range: ClosedRange<Float>) -> some View {
+        sliderControl(label, value: value, range: range, format: "%.0f")
+    }
+
+    private func scalarControl(_ label: String, value: Binding<Float>, range: ClosedRange<Float>) -> some View {
+        sliderControl(label, value: value, range: range, format: "%.2f")
+    }
+
+    private func sliderControl(_ label: String, value: Binding<Float>, range: ClosedRange<Float>, format: String) -> some View {
+        HStack(spacing: 6) {
+            Text(label)
+                .frame(width: 84, alignment: .leading)
+                .foregroundStyle(.cyan.opacity(0.75))
+            Slider(value: value, in: range)
+            Text(String(format: format, value.wrappedValue))
+                .frame(width: 34, alignment: .trailing)
+                .foregroundStyle(.cyan)
+        }
+        .font(.system(size: 9, design: .monospaced))
+    }
+
+    private func cycleCurve(_ direction: Int) {
+        stats.grassOptCurve = (stats.grassOptCurve + direction + GrassResearchCatalog.curveTypes.count) % GrassResearchCatalog.curveTypes.count
+    }
+
     private func cycleGeneration(_ direction: Int) {
         grassCycle(index: &generationIndex,
                    count: GrassResearchCatalog.generationMethods.count,
@@ -335,7 +415,11 @@ private struct GrassResearchCyclerPanel: View {
             grassCycle(index: &optimizationIndex,
                        count: GrassResearchCatalog.optimizationMethods.count,
                        direction: direction)
-            if optimization.isCompatible(with: generation) { return }
+            if optimization.isCompatible(with: generation) {
+                applyDefaultFieldsForOptimization()
+                publishModes()
+                return
+            }
         } while optimizationIndex != start
 
         normalizeOptimizationForGeneration()
@@ -349,6 +433,7 @@ private struct GrassResearchCyclerPanel: View {
             let candidate = (optimizationIndex - step + count) % count
             if GrassResearchCatalog.optimizationMethods[candidate].isCompatible(with: generation) {
                 optimizationIndex = candidate
+                applyDefaultFieldsForOptimization()
                 publishModes()
                 return
             }
@@ -362,6 +447,41 @@ private struct GrassResearchCyclerPanel: View {
     private func publishModes() {
         stats.grassGenerationMode = generationIndex
         stats.grassOptimizationMode = optimizationIndex
+    }
+
+    private func applyDefaultFieldsForOptimization() {
+        switch optimization.id {
+        case "no-far-geometry":
+            stats.grassOptStartDistance = 46
+            stats.grassOptEndDistance = 58
+            stats.grassOptDensityScale = 0
+            stats.grassOptStrength = 2
+            stats.grassOptCurve = 0
+        case "distance-lod-density", "dither-density-fade":
+            stats.grassOptStartDistance = 18
+            stats.grassOptEndDistance = 70
+            stats.grassOptDensityScale = 0.25
+            stats.grassOptStrength = 2
+            stats.grassOptCurve = 0
+        case "wind-lod":
+            stats.grassOptStartDistance = 22
+            stats.grassOptEndDistance = 55
+            stats.grassOptDensityScale = 0
+            stats.grassOptStrength = 2
+            stats.grassOptCurve = 0
+        case "lod-width-compensation":
+            stats.grassOptStartDistance = 20
+            stats.grassOptEndDistance = 64
+            stats.grassOptDensityScale = 0.25
+            stats.grassOptStrength = 2
+            stats.grassOptCurve = 0
+        case "overdraw-control":
+            stats.grassOptDensityScale = 0.55
+        case "quality-tiers":
+            stats.grassOptDensityScale = 0.72
+        default:
+            break
+        }
     }
 }
 

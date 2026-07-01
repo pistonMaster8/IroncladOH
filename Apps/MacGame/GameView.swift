@@ -207,6 +207,11 @@ final class GameCoordinator: NSObject, MTKViewDelegate {
             host.longColorTipB      = s.longColorTipB
             host.grassGenerationMode = Int32(s.grassGenerationMode)
             host.grassOptimizationMode = Int32(s.grassOptimizationMode)
+            host.grassOptStartDistance = s.grassOptStartDistance
+            host.grassOptEndDistance = s.grassOptEndDistance
+            host.grassOptDensityScale = s.grassOptDensityScale
+            host.grassOptStrength = s.grassOptStrength
+            host.grassOptCurve = Int32(s.grassOptCurve)
             host.treesVisible  = s.treesVisible
             host.treeDensity   = s.treeDensity
             host.treeColorR    = s.treeColorR
@@ -391,4 +396,9 @@ final class EngineStats: ObservableObject {
     @Published var longColorTipB:  Float = 0.070
     @Published var grassGenerationMode: Int = 0
     @Published var grassOptimizationMode: Int = 0
+    @Published var grassOptStartDistance: Float = 46.0
+    @Published var grassOptEndDistance: Float = 58.0
+    @Published var grassOptDensityScale: Float = 0.0
+    @Published var grassOptStrength: Float = 2.0
+    @Published var grassOptCurve: Int = 0
 }

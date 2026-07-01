@@ -169,6 +169,11 @@ struct RenderScene {
     Vec3  longGrassColorTip     { Vec3Make(0.200f, 0.260f, 0.070f) };
     int   grassGenerationMode   { 0 };
     int   grassOptimizationMode { 0 };
+    float grassOptStartDistance { 46.0f };
+    float grassOptEndDistance   { 58.0f };
+    float grassOptDensityScale  { 0.0f };
+    float grassOptStrength      { 2.0f };
+    int   grassOptCurve         { 0 };
 
     // Terrain construction editor
     bool  dModeActive          = false;

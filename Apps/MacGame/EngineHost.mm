@@ -165,6 +165,11 @@ struct EngineState {
     float     _longColorTipR,   _longColorTipG,   _longColorTipB;
     int       _grassGenerationMode;
     int       _grassOptimizationMode;
+    float     _grassOptStartDistance;
+    float     _grassOptEndDistance;
+    float     _grassOptDensityScale;
+    float     _grassOptStrength;
+    int       _grassOptCurve;
     float     _terraceNoiseStrength;
     float     _terraceNoiseScale;
     BOOL      _tModeActive;
@@ -216,6 +221,11 @@ struct EngineState {
 @synthesize longColorTipB            = _longColorTipB;
 @synthesize grassGenerationMode      = _grassGenerationMode;
 @synthesize grassOptimizationMode    = _grassOptimizationMode;
+@synthesize grassOptStartDistance    = _grassOptStartDistance;
+@synthesize grassOptEndDistance      = _grassOptEndDistance;
+@synthesize grassOptDensityScale     = _grassOptDensityScale;
+@synthesize grassOptStrength         = _grassOptStrength;
+@synthesize grassOptCurve            = _grassOptCurve;
 @synthesize terraceNoiseStrength     = _terraceNoiseStrength;
 @synthesize terraceNoiseScale        = _terraceNoiseScale;
 @synthesize tModeActive              = _tModeActive;
@@ -301,6 +311,11 @@ struct EngineState {
     _longColorTipR      = 0.200f; _longColorTipG   = 0.260f; _longColorTipB   = 0.070f;
     _grassGenerationMode   = 0;
     _grassOptimizationMode = 0;
+    _grassOptStartDistance = 46.0f;
+    _grassOptEndDistance   = 58.0f;
+    _grassOptDensityScale  = 0.0f;
+    _grassOptStrength      = 2.0f;
+    _grassOptCurve         = 0;
     _terraceNoiseStrength = 0.0f;
     _terraceNoiseScale    = 1.0f;
 
@@ -790,6 +805,11 @@ struct EngineState {
     scene.longGrassColorTip   = Vec3Make(_longColorTipR,   _longColorTipG,   _longColorTipB);
     scene.grassGenerationMode   = _grassGenerationMode;
     scene.grassOptimizationMode = _grassOptimizationMode;
+    scene.grassOptStartDistance = _grassOptStartDistance;
+    scene.grassOptEndDistance   = _grassOptEndDistance;
+    scene.grassOptDensityScale  = _grassOptDensityScale;
+    scene.grassOptStrength      = _grassOptStrength;
+    scene.grassOptCurve         = _grassOptCurve;
 
     // Terrace face roughness
     scene.terraceNoiseStrength = _terraceNoiseStrength;

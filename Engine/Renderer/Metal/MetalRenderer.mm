@@ -1157,6 +1157,11 @@ struct GpuGrassUniforms {
     int          hfDivs;       // active heightfield grid divisions (scales with the plane)
     int          mode;
     int          optMode;
+    simd_float4  optParams;    // x=start distance, y=end distance, z=density/wind scale, w=strength
+    int          optCurve;
+    int          _padOpt0;
+    int          _padOpt1;
+    int          _padOpt2;
     simd_float3  colorBase;  float _pad2;
     simd_float3  colorTip;   float _pad3;
 };
@@ -2094,9 +2099,23 @@ struct GrassUniforms {
     int    hfDivs;       // active heightfield grid divisions (scales with the plane)
     int    mode;
     int    optMode;
+    float4 optParams;    // x=start distance, y=end distance, z=density/wind scale, w=strength
+    int    optCurve;
+    int    _padOpt0;
+    int    _padOpt1;
+    int    _padOpt2;
     float3 colorBase; float _pad2;
     float3 colorTip;  float _pad3;
 };
+
+static float grassCurve(float t, int curve) {
+    t = clamp(t, 0.0f, 1.0f);
+    if (curve == 1) return t;
+    if (curve == 2) return t * t;
+    if (curve == 3) return 1.0f - (1.0f - t) * (1.0f - t);
+    if (curve == 4) return t >= 1.0f ? 1.0f : 0.0f;
+    return t * t * (3.0f - 2.0f * t);
+}
 
 struct GrassOut {
     float4 position [[position]];
@@ -2156,6 +2175,9 @@ vertex GrassOut grassVS(uint             vid [[vertex_id]],
     int optMode = g.optMode;
     float distCam = distance(float2(u.cameraPos.x, u.cameraPos.z), float2(wx, wz));
     float chunkHash = shash(floor(float2(wx, wz) / 12.0f));
+    float optStart = min(g.optParams.x, g.optParams.y - 0.5f);
+    float optEnd = max(g.optParams.y, optStart + 0.5f);
+    float optT = grassCurve((distCam - optStart) / (optEnd - optStart), g.optCurve);
 
     // Culling. Risers stay ~1 grid cell wide at any plane scale (constant cell size), so the
     // slope test below catches them without a separate per-blade riser probe.
@@ -2212,10 +2234,10 @@ vertex GrassOut grassVS(uint             vid [[vertex_id]],
         else if (mode == 9) modeDensity *= mix(1.0f, 0.18f, smoothstep(18.0f, 62.0f, distCam));
         else if (mode == 10) modeDensity *= 0.20f;            // billboard-only
 
-        if (optMode == 0) modeDensity *= 1.0f - smoothstep(46.0f, 58.0f, distCam);
-        else if (optMode == 2) modeDensity *= mix(1.0f, 0.25f, smoothstep(18.0f, 70.0f, distCam));
-        else if (optMode == 13) modeDensity *= 0.55f;
-        else if (optMode == 22) modeDensity *= 0.72f;
+        if (optMode == 0) modeDensity *= mix(1.0f, g.optParams.z, optT);
+        else if (optMode == 2 || optMode == 4) modeDensity *= mix(1.0f, g.optParams.z, optT);
+        else if (optMode == 13) modeDensity *= g.optParams.z;
+        else if (optMode == 22) modeDensity *= g.optParams.z;
 
         if (densR >= clamp(modeDensity, 0.0f, 1.0f)) cull = true;
     }
@@ -2248,7 +2270,7 @@ vertex GrassOut grassVS(uint             vid [[vertex_id]],
     else if (mode == 8) { bH *= 0.88f; bB *= 0.75f; bW *= 0.75f; }
     else if (mode == 9) { float lod = smoothstep(14.0f, 62.0f, distCam); bH *= mix(1.0f, 0.38f, lod); bW *= mix(0.9f, 2.8f, lod); }
     else if (mode == 10) { bH *= 0.92f; bB *= 0.05f; bW *= 5.2f; }
-    if (optMode == 16) bW *= mix(1.0f, 2.0f, smoothstep(20.0f, 64.0f, distCam));
+    if (optMode == 16) bW *= mix(1.0f, max(1.0f, g.optParams.w), optT);
 
     // ── Grass interaction: footprint squish + lateral push ────────────────────
     float4 interact = grInteract(wx, wz, gf);
@@ -2257,7 +2279,7 @@ vertex GrassOut grassVS(uint             vid [[vertex_id]],
     bH *= (1.0f - squish * 0.88f);
     bB *= (1.0f - squish * 0.88f);
     float windStrength = (mode == 6) ? 0.55f : 0.12f;
-    if (optMode == 8) windStrength *= 1.0f - smoothstep(22.0f, 55.0f, distCam);
+    if (optMode == 8) windStrength *= mix(1.0f, g.optParams.z, optT);
     float wind = sin(u.time * (mode == 6 ? 2.2f : 0.7f) + wx * 0.12f + wz * 0.07f + br * 6.28f);
     bB += wind * windStrength * bH;
 
@@ -3208,6 +3230,11 @@ void MetalRenderer::RenderScene(const ::RenderScene& scene) {
             gp[gi2].spacing    = kBaseSpacing[gi2];
             gp[gi2].mode       = scene.grassGenerationMode;
             gp[gi2].optMode    = scene.grassOptimizationMode;
+            gp[gi2].optParams  = simd_make_float4(scene.grassOptStartDistance,
+                                                   scene.grassOptEndDistance,
+                                                   scene.grassOptDensityScale,
+                                                   scene.grassOptStrength);
+            gp[gi2].optCurve   = scene.grassOptCurve;
         }
         const int grassMode = scene.grassGenerationMode;
 
