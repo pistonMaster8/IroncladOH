@@ -2,6 +2,95 @@
 
 import SwiftUI
 
+private struct GrassResearchMethod: Identifiable {
+    let id: String
+    let name: String
+}
+
+private struct GrassOptimizationMethod: Identifiable {
+    let id: String
+    let name: String
+    let compatibleGenerationIDs: Set<String>
+
+    func isCompatible(with generation: GrassResearchMethod) -> Bool {
+        compatibleGenerationIDs.contains(generation.id)
+    }
+}
+
+private enum GrassResearchCatalog {
+    static let generationMethods: [GrassResearchMethod] = [
+        GrassResearchMethod(id: "ironclad-default", name: "Ironclad Default"),
+        GrassResearchMethod(id: "terrain-material", name: "Terrain-material foundation"),
+        GrassResearchMethod(id: "cpu-instanced", name: "CPU instanced clumps/cards"),
+        GrassResearchMethod(id: "chunk-placement", name: "Chunked procedural placement"),
+        GrassResearchMethod(id: "alpha-cards", name: "Alpha-clipped cards"),
+        GrassResearchMethod(id: "lod-meshes", name: "Grass LOD meshes"),
+        GrassResearchMethod(id: "shader-wind", name: "Procedural shader wind"),
+        GrassResearchMethod(id: "shell-texture", name: "Shell-textured grass"),
+        GrassResearchMethod(id: "gpu-generated", name: "GPU-generated procedural grass"),
+        GrassResearchMethod(id: "mesh-shader", name: "Mesh-shader grass"),
+        GrassResearchMethod(id: "billboard", name: "Billboard-only grass")
+    ]
+
+    private static let allGeometry: Set<String> = [
+        "ironclad-default", "cpu-instanced", "chunk-placement", "alpha-cards",
+        "lod-meshes", "shader-wind", "shell-texture", "gpu-generated",
+        "mesh-shader", "billboard"
+    ]
+
+    private static let instancedGeometry: Set<String> = [
+        "ironclad-default", "cpu-instanced", "chunk-placement", "alpha-cards",
+        "lod-meshes", "shader-wind", "billboard"
+    ]
+
+    private static let cardsAndCutouts: Set<String> = [
+        "ironclad-default", "cpu-instanced", "chunk-placement", "alpha-cards",
+        "lod-meshes", "shader-wind", "billboard"
+    ]
+
+    private static let terrainBacked: Set<String> = [
+        "ironclad-default", "terrain-material", "cpu-instanced", "chunk-placement",
+        "alpha-cards", "lod-meshes", "shader-wind", "shell-texture",
+        "gpu-generated", "mesh-shader", "billboard"
+    ]
+
+    private static let gpuDriven: Set<String> = [
+        "gpu-generated", "mesh-shader"
+    ]
+
+    private static let shellCapable: Set<String> = [
+        "shell-texture"
+    ]
+
+    static let optimizationMethods: [GrassOptimizationMethod] = [
+        GrassOptimizationMethod(id: "no-far-geometry", name: "No far grass geometry", compatibleGenerationIDs: terrainBacked),
+        GrassOptimizationMethod(id: "chunk-frustum", name: "Chunk-level frustum culling", compatibleGenerationIDs: allGeometry.union(["terrain-material"])),
+        GrassOptimizationMethod(id: "distance-lod-density", name: "Distance LOD and density reduction", compatibleGenerationIDs: allGeometry),
+        GrassOptimizationMethod(id: "gpu-instancing", name: "GPU instancing", compatibleGenerationIDs: instancedGeometry),
+        GrassOptimizationMethod(id: "dither-density-fade", name: "Dither/density fade", compatibleGenerationIDs: allGeometry),
+        GrassOptimizationMethod(id: "compact-instance-data", name: "Compact instance data", compatibleGenerationIDs: instancedGeometry.union(gpuDriven)),
+        GrassOptimizationMethod(id: "deterministic-generation", name: "Deterministic chunk generation", compatibleGenerationIDs: terrainBacked),
+        GrassOptimizationMethod(id: "terrain-mask-placement", name: "Terrain mask placement", compatibleGenerationIDs: terrainBacked),
+        GrassOptimizationMethod(id: "wind-lod", name: "Wind LOD", compatibleGenerationIDs: allGeometry.subtracting(["terrain-material"])),
+        GrassOptimizationMethod(id: "shadow-exclusion", name: "Shadow LOD/exclusion", compatibleGenerationIDs: allGeometry),
+        GrassOptimizationMethod(id: "material-batching", name: "Material/draw batching", compatibleGenerationIDs: allGeometry),
+        GrassOptimizationMethod(id: "texture-atlas-array", name: "Texture atlas/array", compatibleGenerationIDs: cardsAndCutouts),
+        GrassOptimizationMethod(id: "alpha-clipping", name: "Alpha clipping", compatibleGenerationIDs: cardsAndCutouts),
+        GrassOptimizationMethod(id: "overdraw-control", name: "Overdraw control", compatibleGenerationIDs: cardsAndCutouts.union(shellCapable)),
+        GrassOptimizationMethod(id: "local-patches", name: "Local patches, not blades", compatibleGenerationIDs: instancedGeometry.union(gpuDriven)),
+        GrassOptimizationMethod(id: "lod-width-compensation", name: "LOD widening compensation", compatibleGenerationIDs: gpuDriven.union(["alpha-cards", "lod-meshes"])),
+        GrassOptimizationMethod(id: "gpu-culling-indirect", name: "GPU culling/indirect drawing", compatibleGenerationIDs: gpuDriven.union(instancedGeometry)),
+        GrassOptimizationMethod(id: "hierarchical-culling", name: "Hierarchical culling", compatibleGenerationIDs: allGeometry),
+        GrassOptimizationMethod(id: "occlusion-culling", name: "Occlusion culling", compatibleGenerationIDs: allGeometry),
+        GrassOptimizationMethod(id: "animation-update-lod", name: "Animation/update LOD", compatibleGenerationIDs: allGeometry),
+        GrassOptimizationMethod(id: "interaction-field", name: "Interaction field", compatibleGenerationIDs: allGeometry.union(shellCapable)),
+        GrassOptimizationMethod(id: "async-generation", name: "Async generation/loading", compatibleGenerationIDs: terrainBacked),
+        GrassOptimizationMethod(id: "quality-tiers", name: "Quality tiers", compatibleGenerationIDs: terrainBacked),
+        GrassOptimizationMethod(id: "foliage-hlod", name: "Grass impostors / foliage HLOD", compatibleGenerationIDs: allGeometry),
+        GrassOptimizationMethod(id: "no-geometry-shader", name: "Avoid geometry/tessellation dependency", compatibleGenerationIDs: terrainBacked)
+    ]
+}
+
 struct ContentView: View {
     enum Route {
         case startMenu
@@ -125,6 +214,8 @@ private struct StartMenuButtonStyle: ButtonStyle {
 private struct WorkspaceSceneView: View {
 
     @StateObject private var stats = EngineStats()
+    @State private var grassGenerationIndex = 0
+    @State private var grassOptimizationIndex = 0
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -133,8 +224,131 @@ private struct WorkspaceSceneView: View {
 
             DebugOverlayView(stats: stats)
                 .padding(10)
+
+            GrassResearchCyclerPanel(
+                generationIndex: $grassGenerationIndex,
+                optimizationIndex: $grassOptimizationIndex
+            )
+            .padding(10)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
         }
         .frame(minWidth: 800, minHeight: 600)
+    }
+}
+
+private struct GrassResearchCyclerPanel: View {
+    @Binding var generationIndex: Int
+    @Binding var optimizationIndex: Int
+
+    private var generation: GrassResearchMethod {
+        GrassResearchCatalog.generationMethods[generationIndex]
+    }
+
+    private var optimization: GrassOptimizationMethod {
+        GrassResearchCatalog.optimizationMethods[optimizationIndex]
+    }
+
+    private var compatibleOptimizationCount: Int {
+        GrassResearchCatalog.optimizationMethods.filter { $0.isCompatible(with: generation) }.count
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text("Grass Research")
+                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .foregroundStyle(.mint)
+                .allowsHitTesting(false)
+
+            cyclerRow(
+                label: "Generation",
+                value: generation.name,
+                color: .mint,
+                previous: { cycleGeneration(-1) },
+                next: { cycleGeneration(1) }
+            )
+
+            cyclerRow(
+                label: "Optimization",
+                value: optimization.name,
+                color: optimization.isCompatible(with: generation) ? .cyan : .gray,
+                previous: { cycleOptimization(-1) },
+                next: { cycleOptimization(1) }
+            )
+
+            Text("\(compatibleOptimizationCount)/\(GrassResearchCatalog.optimizationMethods.count) compatible")
+                .font(.system(size: 9, design: .monospaced))
+                .foregroundStyle(.gray)
+                .allowsHitTesting(false)
+        }
+        .padding(7)
+        .frame(width: 310, alignment: .leading)
+        .background(.black.opacity(0.62))
+        .cornerRadius(5)
+    }
+
+    private func cyclerRow(
+        label: String,
+        value: String,
+        color: Color,
+        previous: @escaping () -> Void,
+        next: @escaping () -> Void
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label)
+                .font(.system(size: 9, weight: .medium, design: .monospaced))
+                .foregroundStyle(color.opacity(0.7))
+                .allowsHitTesting(false)
+
+            HStack(spacing: 6) {
+                Button(action: previous) { Text("<") }
+                    .buttonStyle(.plain)
+                Text(value)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .foregroundStyle(color)
+                    .allowsHitTesting(false)
+                Button(action: next) { Text(">") }
+                    .buttonStyle(.plain)
+            }
+            .font(.system(size: 10, weight: .semibold, design: .monospaced))
+            .foregroundStyle(color)
+        }
+    }
+
+    private func cycleGeneration(_ direction: Int) {
+        grassCycle(index: &generationIndex,
+                   count: GrassResearchCatalog.generationMethods.count,
+                   direction: direction)
+        normalizeOptimizationForGeneration()
+    }
+
+    private func cycleOptimization(_ direction: Int) {
+        let start = optimizationIndex
+        repeat {
+            grassCycle(index: &optimizationIndex,
+                       count: GrassResearchCatalog.optimizationMethods.count,
+                       direction: direction)
+            if optimization.isCompatible(with: generation) { return }
+        } while optimizationIndex != start
+
+        normalizeOptimizationForGeneration()
+    }
+
+    private func normalizeOptimizationForGeneration() {
+        guard !optimization.isCompatible(with: generation) else { return }
+        let count = GrassResearchCatalog.optimizationMethods.count
+        for step in 1...count {
+            let candidate = (optimizationIndex - step + count) % count
+            if GrassResearchCatalog.optimizationMethods[candidate].isCompatible(with: generation) {
+                optimizationIndex = candidate
+                return
+            }
+        }
+    }
+
+    private func grassCycle(index: inout Int, count: Int, direction: Int) {
+        index = (index + direction + count) % count
     }
 }
 
