@@ -1,8 +1,128 @@
-// ContentView.swift — Root SwiftUI layout with game view + debug overlay.
+// ContentView.swift — Root SwiftUI layout with start menu, workspace list, and scene.
 
 import SwiftUI
 
 struct ContentView: View {
+    enum Route {
+        case startMenu
+        case comparisonWorkspaces
+        case grassWorkspace
+    }
+
+    @State private var route: Route = .startMenu
+
+    var body: some View {
+        switch route {
+        case .startMenu:
+            StartMenuView(
+                onStressTesting: {},
+                onComparisonWorkspaces: { route = .comparisonWorkspaces }
+            )
+        case .comparisonWorkspaces:
+            ComparisonWorkspaceListView(
+                onGrass: { route = .grassWorkspace }
+            )
+        case .grassWorkspace:
+            WorkspaceSceneView()
+        }
+    }
+}
+
+private struct StartMenuView: View {
+    let onStressTesting: () -> Void
+    let onComparisonWorkspaces: () -> Void
+
+    private var versionText: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1"
+    }
+
+    var body: some View {
+        ZStack {
+            Color(red: 0.035, green: 0.04, blue: 0.06)
+                .ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                VStack(spacing: 6) {
+                    Text("Ironclad Optimization Helper")
+                        .font(.system(size: 28, weight: .semibold))
+                    Text("Version \(versionText)")
+                        .font(.system(size: 13, weight: .medium, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.top, 34)
+
+                Spacer()
+
+                VStack(spacing: 14) {
+                    Button(action: onStressTesting) {
+                        Text("stress testing")
+                            .frame(width: 260, height: 44)
+                    }
+                    .buttonStyle(StartMenuButtonStyle())
+
+                    Button(action: onComparisonWorkspaces) {
+                        Text("comparison workspaces")
+                            .frame(width: 260, height: 44)
+                    }
+                    .buttonStyle(StartMenuButtonStyle())
+                }
+
+                Spacer()
+            }
+            .foregroundStyle(.white)
+        }
+        .frame(minWidth: 800, minHeight: 600)
+    }
+}
+
+private struct ComparisonWorkspaceListView: View {
+    let onGrass: () -> Void
+
+    var body: some View {
+        ZStack {
+            Color(red: 0.035, green: 0.04, blue: 0.06)
+                .ignoresSafeArea()
+
+            VStack(spacing: 18) {
+                Text("Comparison Workspaces")
+                    .font(.system(size: 24, weight: .semibold))
+                    .padding(.top, 34)
+
+                Spacer()
+
+                Button(action: onGrass) {
+                    Text("Grass")
+                        .frame(width: 260, height: 44)
+                }
+                .buttonStyle(StartMenuButtonStyle())
+
+                Spacer()
+            }
+            .foregroundStyle(.white)
+        }
+        .frame(minWidth: 800, minHeight: 600)
+    }
+}
+
+private struct StartMenuButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(.white)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(configuration.isPressed
+                          ? Color(red: 0.58, green: 0.13, blue: 0.12)
+                          : Color(red: 0.76, green: 0.17, blue: 0.15))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(Color.white.opacity(0.18), lineWidth: 1)
+            )
+    }
+}
+
+private struct WorkspaceSceneView: View {
 
     @StateObject private var stats = EngineStats()
 
