@@ -1,0 +1,38 @@
+{
+  "name": "soldier_humanoid",
+  "version": 1,
+  "scale": 1.0,
+  "description": "Standard 22-bone humanoid skeleton at unit height (1.0 world unit). T-pose. Matches Skeleton::CreateHumanoid().",
+  "bones": [
+    { "name": "root",        "parent": null,          "translation": [0.00,  0.00,  0.00], "rotation": [0,0,0,1], "scale": [1,1,1] },
+    { "name": "pelvis",      "parent": "root",         "translation": [0.00,  0.50,  0.00], "rotation": [0,0,0,1], "scale": [1,1,1] },
+    { "name": "spine_01",    "parent": "pelvis",       "translation": [0.00,  0.12,  0.01], "rotation": [0,0,0,1], "scale": [1,1,1] },
+    { "name": "spine_02",    "parent": "spine_01",     "translation": [0.00,  0.12,  0.01], "rotation": [0,0,0,1], "scale": [1,1,1] },
+    { "name": "neck",        "parent": "spine_02",     "translation": [0.00,  0.14, -0.01], "rotation": [0,0,0,1], "scale": [1,1,1] },
+    { "name": "head",        "parent": "neck",         "translation": [0.00,  0.12,  0.00], "rotation": [0,0,0,1], "scale": [1,1,1] },
+    { "name": "clavicle_l",  "parent": "spine_02",     "translation": [-0.05, 0.10,  0.00], "rotation": [0,0,0,1], "scale": [1,1,1] },
+    { "name": "upper_arm_l", "parent": "clavicle_l",   "translation": [-0.18, 0.00,  0.00], "rotation": [0,0,0,1], "scale": [1,1,1] },
+    { "name": "lower_arm_l", "parent": "upper_arm_l",  "translation": [-0.26, 0.00,  0.00], "rotation": [0,0,0,1], "scale": [1,1,1] },
+    { "name": "hand_l",      "parent": "lower_arm_l",  "translation": [-0.20, 0.00,  0.00], "rotation": [0,0,0,1], "scale": [1,1,1] },
+    { "name": "clavicle_r",  "parent": "spine_02",     "translation": [ 0.05, 0.10,  0.00], "rotation": [0,0,0,1], "scale": [1,1,1] },
+    { "name": "upper_arm_r", "parent": "clavicle_r",   "translation": [ 0.18, 0.00,  0.00], "rotation": [0,0,0,1], "scale": [1,1,1] },
+    { "name": "lower_arm_r", "parent": "upper_arm_r",  "translation": [ 0.26, 0.00,  0.00], "rotation": [0,0,0,1], "scale": [1,1,1] },
+    { "name": "hand_r",      "parent": "lower_arm_r",  "translation": [ 0.20, 0.00,  0.00], "rotation": [0,0,0,1], "scale": [1,1,1] },
+    { "name": "upper_leg_l", "parent": "pelvis",       "translation": [-0.10,-0.02,  0.00], "rotation": [0,0,0,1], "scale": [1,1,1] },
+    { "name": "lower_leg_l", "parent": "upper_leg_l",  "translation": [ 0.00,-0.44,  0.00], "rotation": [0,0,0,1], "scale": [1,1,1] },
+    { "name": "foot_l",      "parent": "lower_leg_l",  "translation": [ 0.00,-0.40,  0.00], "rotation": [0,0,0,1], "scale": [1,1,1] },
+    { "name": "toe_l",       "parent": "foot_l",       "translation": [ 0.14, 0.00,  0.12], "rotation": [0,0,0,1], "scale": [1,1,1] },
+    { "name": "upper_leg_r", "parent": "pelvis",       "translation": [ 0.10,-0.02,  0.00], "rotation": [0,0,0,1], "scale": [1,1,1] },
+    { "name": "lower_leg_r", "parent": "upper_leg_r",  "translation": [ 0.00,-0.44,  0.00], "rotation": [0,0,0,1], "scale": [1,1,1] },
+    { "name": "foot_r",      "parent": "lower_leg_r",  "translation": [ 0.00,-0.40,  0.00], "rotation": [0,0,0,1], "scale": [1,1,1] },
+    { "name": "toe_r",       "parent": "foot_r",       "translation": [ 0.14, 0.00,  0.12], "rotation": [0,0,0,1], "scale": [1,1,1] }
+  ],
+  "notes": {
+    "coordinate_system": "Y-up, Z-forward, right-handed",
+    "bind_pose": "T-pose, arms extended along X axis (left arm negative X, right arm positive X)",
+    "height": "Pelvis at y=0.50, crown at y≈1.02 (combined spine+neck+head translations)",
+    "leg_length": "Upper leg 0.44 + lower leg 0.40 = 0.84 total leg length (from pelvis origin)",
+    "arm_span": "Clavicle 0.05 + upper arm 0.18 + lower arm 0.26 + hand 0.20 = 0.69 per side",
+    "runtime_class": "Skeleton::CreateHumanoid() in Engine/Animation/Core/Skeleton.cpp"
+  }
+}

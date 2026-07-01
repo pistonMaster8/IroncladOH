@@ -1,0 +1,45 @@
+# Build outputs
+build/
+build_xcode/
+build_ios/
+cmake-build-debug/
+cmake-build-release/
+*.o
+*.a
+*.dylib
+
+# Xcode
+*.xcworkspace
+*.xcuserstate
+xcuserdata/
+DerivedData/
+*.pbxuser
+*.mode1v3
+*.perspectivev3
+
+# macOS
+.DS_Store
+.Spotlight-V4
+.Trashes
+
+# Cooked assets (generated; not committed unless small test assets)
+AssetsCooked/**
+!AssetsCooked/.gitkeep
+
+# Raw large assets (artists check these in separately via LFS or similar)
+AssetsRaw/**/*.exr
+AssetsRaw/**/*.hdr
+AssetsRaw/*.fbx
+
+# Environment
+.env
+*.local
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log

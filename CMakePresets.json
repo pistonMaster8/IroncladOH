@@ -1,0 +1,43 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 26,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "server-debug",
+      "displayName": "Headless Server Debug",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/server-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "PFGE_BUILD_TESTS": "ON",
+        "IRONCLADOH_BUILD_APP": "OFF"
+      }
+    },
+    {
+      "name": "xcode-macos",
+      "displayName": "Xcode macOS",
+      "generator": "Xcode",
+      "binaryDir": "${sourceDir}/build/xcode",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_NAME": "Darwin",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "14.0",
+        "PFGE_BUILD_TESTS": "ON",
+        "IRONCLADOH_BUILD_APP": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "server-debug",
+      "configurePreset": "server-debug"
+    },
+    {
+      "name": "xcode-macos",
+      "configurePreset": "xcode-macos"
+    }
+  ]
+}

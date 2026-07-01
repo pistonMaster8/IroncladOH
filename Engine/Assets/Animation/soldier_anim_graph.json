@@ -1,0 +1,139 @@
+{
+  "name": "soldier_anim_graph",
+  "version": 1,
+  "skeleton": "soldier_humanoid",
+  "description": "Animation state graph for the soldier unit. Driven by AnimationStateMachine (Engine/Animation/Runtime/AnimationStateMachine.hpp).",
+
+  "states": [
+    {
+      "name": "Idle",
+      "clip": "soldier_idle",
+      "loop": true,
+      "blendIn": 0.15,
+      "procedural": ["breathing"]
+    },
+    {
+      "name": "Walk",
+      "clip": "soldier_walk",
+      "loop": true,
+      "blendIn": 0.15,
+      "procedural": ["breathing", "locomotion", "lean"]
+    },
+    {
+      "name": "Run",
+      "clip": "soldier_run",
+      "loop": true,
+      "blendIn": 0.12,
+      "procedural": ["breathing", "locomotion", "lean"]
+    },
+    {
+      "name": "Turn",
+      "clip": "soldier_idle",
+      "loop": true,
+      "blendIn": 0.10,
+      "procedural": ["breathing"]
+    },
+    {
+      "name": "Attack",
+      "clip": "soldier_walk",
+      "loop": false,
+      "blendIn": 0.10,
+      "note": "Placeholder — replace with soldier_attack clip when authored."
+    },
+    {
+      "name": "HitReact",
+      "clip": "soldier_hit_react",
+      "loop": false,
+      "blendIn": 0.05,
+      "duration": 0.35,
+      "procedural": ["hit_reaction"]
+    },
+    {
+      "name": "Stunned",
+      "clip": "soldier_idle",
+      "loop": true,
+      "blendIn": 0.20
+    },
+    {
+      "name": "Dead",
+      "clip": "soldier_idle",
+      "loop": false,
+      "blendIn": 0.30,
+      "note": "Placeholder — replace with soldier_death clip when authored."
+    }
+  ],
+
+  "transitions": [
+    { "from": "Idle",     "to": "Walk",     "condition": "speed > 0.3",       "blendTime": 0.15 },
+    { "from": "Walk",     "to": "Run",      "condition": "speed > 3.0",       "blendTime": 0.12 },
+    { "from": "Run",      "to": "Walk",     "condition": "speed < 2.5",       "blendTime": 0.12 },
+    { "from": "Walk",     "to": "Idle",     "condition": "speed < 0.2",       "blendTime": 0.15 },
+    { "from": "Idle",     "to": "Turn",     "condition": "abs(facingDelta) > 0.5", "blendTime": 0.10 },
+    { "from": "Turn",     "to": "Idle",     "condition": "abs(facingDelta) < 0.15", "blendTime": 0.10 },
+    { "from": "Turn",     "to": "Walk",     "condition": "speed > 0.3",       "blendTime": 0.12 },
+    { "from": "Walk",     "to": "Attack",   "condition": "isAttacking",       "blendTime": 0.10 },
+    { "from": "Attack",   "to": "Walk",     "condition": "!isAttacking && speed > 0.3", "blendTime": 0.12 },
+    { "from": "Attack",   "to": "Idle",     "condition": "!isAttacking && speed < 0.2", "blendTime": 0.15 },
+    { "from": "*",        "to": "HitReact", "condition": "wasDamaged",        "blendTime": 0.05, "priority": 10 },
+    { "from": "HitReact", "to": "Idle",     "condition": "stateTime > 0.35 && speed < 0.2", "blendTime": 0.10 },
+    { "from": "HitReact", "to": "Walk",     "condition": "stateTime > 0.35 && speed > 0.2", "blendTime": 0.10 },
+    { "from": "*",        "to": "Stunned",  "condition": "behaviorState == Stunned", "priority": 15 },
+    { "from": "Stunned",  "to": "Idle",     "condition": "behaviorState != Stunned", "blendTime": 0.20 },
+    { "from": "*",        "to": "Dead",     "condition": "health <= 0.0",     "blendTime": 0.30, "priority": 20 }
+  ],
+
+  "parameters": [
+    { "name": "speed",         "type": "float", "default": 0.0 },
+    { "name": "facingDelta",   "type": "float", "default": 0.0 },
+    { "name": "health",        "type": "float", "default": 1.0 },
+    { "name": "wasDamaged",    "type": "bool",  "default": false },
+    { "name": "isAttacking",   "type": "bool",  "default": false },
+    { "name": "behaviorState", "type": "int",   "default": 0 }
+  ],
+
+  "procedural_layers": {
+    "breathing": {
+      "function": "ProceduralAnimator::ApplyBreathing",
+      "always_on": true,
+      "bones": ["spine_01", "spine_02", "pelvis"]
+    },
+    "locomotion": {
+      "function": "ProceduralAnimator::ApplyLocomotion",
+      "condition": "speed > 0.05",
+      "bones": ["pelvis", "spine_01", "spine_02"]
+    },
+    "lean": {
+      "function": "ProceduralAnimator::ApplyAccelerationLean",
+      "condition": "speed > 0.1",
+      "bones": ["spine_01", "spine_02"]
+    },
+    "hit_reaction": {
+      "function": "ProceduralAnimator::ApplyHitReaction",
+      "condition": "hitReactTime >= 0",
+      "bones": ["spine_01", "spine_02", "head", "upper_arm_l", "upper_arm_r"]
+    }
+  },
+
+  "ik_passes": [
+    {
+      "name": "left_foot",
+      "type": "two_bone",
+      "root": "upper_leg_l",
+      "mid":  "lower_leg_l",
+      "tip":  "foot_l",
+      "pole": [0, 0, 1],
+      "source": "terrain_height",
+      "weight_param": "speed_blend_inv"
+    },
+    {
+      "name": "right_foot",
+      "type": "two_bone",
+      "root": "upper_leg_r",
+      "mid":  "lower_leg_r",
+      "tip":  "foot_r",
+      "pole": [0, 0, 1],
+      "source": "terrain_height",
+      "weight_param": "speed_blend_inv"
+    }
+  ]
+}
